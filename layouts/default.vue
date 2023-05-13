@@ -4,9 +4,9 @@
       <v-navigation-drawer permanent class="d-block" rail expand-on-hover>
         <v-list-item
           title="Имя Студента"
-          nav
           class="py-2"
           subtitle="mail@domain.name"
+          nav
         >
           <template v-slot:prepend
             ><v-avatar color="primary" icon="mdi-account"></v-avatar>
