@@ -70,7 +70,6 @@
       <v-container>
         <v-range-slider
           v-model="rng"
-          strict
           :min="1"
           :max="7"
           :step="1"
