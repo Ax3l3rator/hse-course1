@@ -22,18 +22,30 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var import_electron = require("electron");
 var import_path = __toESM(require("path"));
+var import_HSEAuthService = require("./utils/HSEAuthService");
+var jwt = __toESM(require("jsonwebtoken"));
+var import_Store = require("./utils/Store");
+try {
+  console.log(import_Store.EncryptedStorage.getToken("refresh"));
+  console.log(process.env.scrtk);
+} catch (_) {
+}
 let window;
 function createWindow() {
   window = new import_electron.BrowserWindow({
+    width: 1280,
+    height: 720,
     minHeight: 720,
     minWidth: 1280,
     webPreferences: {
-      webSecurity: false,
-      preload: import_path.default.join(__dirname, "preload.ts")
+      preload: import_path.default.join(__dirname, "preload.js")
     },
-    icon: "icon.png"
+    icon: "icon.png",
+    center: true,
+    show: false
   });
   window.setMenu(null);
+  window.center();
   if (process.env.DEV_URL) {
     window.loadURL(process.env.DEV_URL);
     window.webContents.on("before-input-event", (_, input) => {
@@ -44,36 +56,62 @@ function createWindow() {
   } else {
     window.loadFile(import_path.default.join(__dirname, "../../.output/public/index.html"));
   }
-  if (process.argv.slice(1).length) {
-  }
+  window.webContents.on("did-finish-load", () => {
+    window.show();
+  });
 }
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
-    import_electron.app.setAsDefaultProtocolClient("appx-fiddle", process.execPath, [
+    import_electron.app.setAsDefaultProtocolClient("ruz-app-fiddle", process.execPath, [
       import_path.default.resolve(process.argv[1])
     ]);
   }
 } else {
-  import_electron.app.setAsDefaultProtocolClient("appx-fiddle");
+  import_electron.app.setAsDefaultProtocolClient("ruz-app-fiddle");
 }
 const gotTheLock = import_electron.app.requestSingleInstanceLock();
 if (!gotTheLock) {
   import_electron.app.exit();
-} else {
-  import_electron.app.on("second-instance", (event, commandLine, workingDirectory) => {
-    if (window) {
-      if (window.isMinimized()) {
-        window.restore();
-      }
-      window.focus();
-    }
-    let v = process.argv.slice(1);
-  });
 }
-import_electron.app.whenReady().then(() => {
+import_electron.app.whenReady().then(async () => {
   createWindow();
 });
 import_electron.app.on("window-all-closed", () => {
   if (process.platform !== "darwin")
     import_electron.app.exit();
+});
+import_electron.ipcMain.handle("auth", () => {
+  console.log("here");
+  const authWindow = new import_electron.BrowserWindow({
+    minimizable: false,
+    resizable: false,
+    parent: window,
+    modal: true,
+    frame: true,
+    thickFrame: true,
+    useContentSize: true,
+    show: false
+  });
+  authWindow.setMenu(null);
+  authWindow.webContents.loadURL(
+    "https://auth.hse.ru/adfs/oauth2/authorize?response_type=code&client_id=5adda899-e75d-46d9-90d9-38380bdf060a&redirect_uri=ruz-app-fiddle://auth.hse.ru/adfs/oauth2/callback"
+  );
+  authWindow.center();
+  authWindow.webContents.on("did-finish-load", () => {
+    authWindow.show();
+  });
+  authWindow.webContents.on("did-redirect-navigation", async (event) => {
+    const code = new URL(event.url).searchParams.get("code");
+    if (code) {
+      const accessData = await import_HSEAuthService.HSEAuthService.requestAccessByCode(code);
+      import_Store.EncryptedStorage.saveAccessData(accessData);
+      const decoded = jwt.decode(accessData.id_token, {
+        complete: true
+      });
+      window.webContents.send("log", decoded);
+      authWindow.close();
+    }
+  });
+});
+import_electron.ipcMain.handle("rem", async () => {
 });

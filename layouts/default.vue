@@ -7,6 +7,7 @@
           class="py-2"
           subtitle="mail@domain.name"
           nav
+          to="user"
         >
           <template v-slot:prepend
             ><v-avatar color="primary" icon="mdi-account"></v-avatar>
